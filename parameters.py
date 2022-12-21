@@ -1,5 +1,3 @@
-import os
-
 class Dataset:
     name = 'Fer2013'
     train_folder = 'fer2013_features/Training'
@@ -9,18 +7,21 @@ class Dataset:
     trunc_validationset_to = -1
     trunc_testset_to = -1
 
+
 class Hyperparams:
-    random_state = 0
     epochs = 10000
     epochs_during_hyperopt = 500
     kernel = 'rbf'  # 'rbf', 'linear', 'poly' or 'sigmoid'
-    decision_function = 'ovr'  # 'ovo' for OneVsOne and 'ovr' for OneVsRest'
-    features = "landmarks_and_hog" # "landmarks" or "hog" or "landmarks_and_hog"
-    gamma = 'auto' # use a float number or 'auto' 
- 
+    features = 'landmarks_and_hog' # 'hog', 'landmarks', 'landmarks_and_hog'
+    theta = 22.178  # default = 20
+    c_value = 253.944   # default = 200
+    toler = 0.00010735  # default = 0.0001
+
+
 class Training:
     save_model = True
-    save_model_path = "saved_model.bin"
+    save_model_path = "model.txt"
+
 
 DATASET = Dataset()
 TRAINING = Training()

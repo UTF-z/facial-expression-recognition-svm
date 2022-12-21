@@ -1,0 +1,7 @@
+numpy==1.23.5
+argparse==1.4.0
+hyperopt==0.2.7
+pandas==1.5.2
+dlib==19.24.0
+opencv-python==4.6.0.66
+scikit-image==0.19.3

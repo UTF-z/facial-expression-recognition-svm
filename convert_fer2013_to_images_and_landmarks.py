@@ -3,7 +3,6 @@ import pandas as pd
 import os
 import argparse
 import errno
-import scipy.misc
 import dlib
 import cv2
 
@@ -20,7 +19,7 @@ GET_LANDMARKS = False
 GET_HOG_FEATURES = False
 GET_HOG_WINDOWS_FEATURES = False
 SELECTED_LABELS = []
-IMAGES_PER_LABEL = 500
+IMAGES_PER_LABEL = [500, 100, 100]
 OUTPUT_FOLDER_NAME = "fer2013_features"
 
 # parse arguments and initialize variables:
@@ -30,7 +29,7 @@ parser.add_argument("-l", "--landmarks", default="yes", help="extract Dlib Face 
 parser.add_argument("-ho", "--hog", default="yes", help="extract HOG features")
 parser.add_argument("-hw", "--hog_windows", default="yes", help="extract HOG features from a sliding window")
 parser.add_argument("-o", "--onehot", default="no", help="one hot encoding")
-parser.add_argument("-e", "--expressions", default="0,1,2,3,4,5,6", help="choose the faciale expression you want to use: 0=Angry, 1=Disgust, 2=Fear, 3=Happy, 4=Sad, 5=Surprise, 6=Neutral")
+parser.add_argument("-e", "--expressions", default="0,1,2,3,4", help="choose the faciale expression you want to use: 0=Angry, 1=Disgust, 2=Fear, 3=Happy, 4=Sad, 5=Surprise, 6=Neutral")
 args = parser.parse_args()
 if args.jpg == "yes":
     SAVE_IMAGES = True
@@ -43,13 +42,13 @@ if args.hog_windows == "yes":
 if args.onehot == "yes":
     ONE_HOT_ENCODING = True
 if args.expressions != "":
-    expressions  = args.expressions.split(",")
-    for i in range(0,len(expressions)):
+    expressions = args.expressions.split(",")
+    for i in range(0, len(expressions)):
         label = int(expressions[i])
-        if (label >=0 and label<=6 ):
+        if (label >= 0) and (label <= 6):
             SELECTED_LABELS.append(label)
 if SELECTED_LABELS == []:
-    SELECTED_LABELS = [0,1,2,3,4,5,6]
+    SELECTED_LABELS = [0, 1, 2, 3, 4, 5, 6]
 print( str(len(SELECTED_LABELS)) + " expressions")
 
 # loading Dlib predictor and preparing arrays:
@@ -66,8 +65,8 @@ except OSError as e:
     else:
         raise
 
+
 def get_landmarks(image, rects):
-    # this function have been copied from http://bit.ly/2cj7Fpq
     if len(rects) > 1:
         raise BaseException("TooManyFaces")
     if len(rects) == 0:
@@ -89,14 +88,16 @@ def sliding_hog_windows(image):
         for x in range(0, image_width, window_step):
             window = image[y:y+window_size, x:x+window_size]
             hog_windows.extend(hog(window, orientations=8, pixels_per_cell=(8, 8),
-                                            cells_per_block=(1, 1), visualise=False))
+                                            cells_per_block=(1, 1), visualize=False))
     return hog_windows
+
 
 print( "importing csv file")
 data = pd.read_csv('fer2013.csv')
+cate_count = 0
 
 for category in data['Usage'].unique():
-    print( "converting set: " + category + "...")
+    print("converting set: " + category + "...")
     # create folder
     if not os.path.exists(category):
         try:
@@ -120,24 +121,25 @@ for category in data['Usage'].unique():
     hog_images = []
     for i in range(len(samples)):
         try:
-            if labels[i] in SELECTED_LABELS and nb_images_per_label[get_new_label(labels[i])] < IMAGES_PER_LABEL:
+            if (labels[i] in SELECTED_LABELS) \
+                    and (nb_images_per_label[get_new_label(labels[i])] < IMAGES_PER_LABEL[cate_count]):
                 image = np.fromstring(samples[i], dtype=int, sep=" ").reshape((image_height, image_width))
                 images.append(image)
                 if SAVE_IMAGES:
-                    scipy.misc.imsave(category + '/' + str(i) + '.jpg', image)
+                    cv2.imwrite(category + '/' + str(i) + '.jpg', image)
                 if GET_HOG_WINDOWS_FEATURES:
                     features = sliding_hog_windows(image)
                     f, hog_image = hog(image, orientations=8, pixels_per_cell=(16, 16),
-                                            cells_per_block=(1, 1), visualise=True)
+                                            cells_per_block=(1, 1), visualize=True)
                     hog_features.append(features)
                     hog_images.append(hog_image)
                 elif GET_HOG_FEATURES:
                     features, hog_image = hog(image, orientations=8, pixels_per_cell=(16, 16),
-                                            cells_per_block=(1, 1), visualise=True)
+                                            cells_per_block=(1, 1), visualize=True)
                     hog_features.append(features)
                     hog_images.append(hog_image)
                 if GET_LANDMARKS:
-                    scipy.misc.imsave('temp.jpg', image)
+                    cv2.imwrite('temp.jpg', image)
                     image2 = cv2.imread('temp.jpg')
                     face_rects = [dlib.rectangle(left=1, top=1, right=47, bottom=47)]
                     face_landmarks = get_landmarks(image2, face_rects)
@@ -145,13 +147,13 @@ for category in data['Usage'].unique():
                 labels_list.append(get_new_label(labels[i], one_hot_encoding=ONE_HOT_ENCODING))
                 nb_images_per_label[get_new_label(labels[i])] += 1
         except Exception as e:
-            print( "error in image: " + str(i) + " - " + str(e))
+            print("error in image: " + str(i) + " - " + str(e))
 
+    cate_count += 1
+    nb_images_per_label = list(np.zeros(len(new_labels), 'uint8'))
+    print(f'the size of set: {len(labels_list)}')
     np.save(OUTPUT_FOLDER_NAME + '/' + category + '/images.npy', images)
-    if ONE_HOT_ENCODING:
-        np.save(OUTPUT_FOLDER_NAME + '/' + category + '/labels.npy', labels_list)
-    else:
-        np.save(OUTPUT_FOLDER_NAME + '/' + category + '/labels.npy', labels_list)
+    np.save(OUTPUT_FOLDER_NAME + '/' + category + '/labels.npy', labels_list)
     if GET_LANDMARKS:
         np.save(OUTPUT_FOLDER_NAME + '/' + category + '/landmarks.npy', landmarks)
     if GET_HOG_FEATURES or GET_HOG_WINDOWS_FEATURES:
