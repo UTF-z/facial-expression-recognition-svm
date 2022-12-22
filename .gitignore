@@ -10,3 +10,4 @@ fer2013_features
 *.dat
 *.csv
 temp.jpg
+**/fer2013_vis/**
