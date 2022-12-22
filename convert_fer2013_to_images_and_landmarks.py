@@ -7,6 +7,7 @@ import dlib
 import cv2
 
 from skimage.feature import hog
+from dimension_reduction import reduce_dimension
 
 # initialization
 image_height = 48

@@ -11,3 +11,6 @@ fer2013_features
 *.csv
 temp.jpg
 **/fer2013_vis/**
+*.rar
+*.tar
+*.zip

@@ -12,6 +12,7 @@ from skimage import exposure
 from matplotlib import pyplot as plt
 from matplotlib import patches
 from data_loader import *
+from dimension_reduction import reduce_dimension
 
 # initialization
 image_height = 300
@@ -209,13 +210,32 @@ def vis_dimension():
     classes = dimensions.keys()
     values = dimensions.values()
     plt.subplot(1, 1, 1)
-    plt.bar(classes, values)
+    p1 = plt.bar(classes, values, width=0.35, label='value')
+    plt.bar_label(p1, label_type='edge')
     plt.xlabel('feature classes')
     plt.ylabel('length of feature')
     plt.title('Feature Length')
     TARGET_NAME = os.path.join(VIS_DIMENSION_FOLDER, 'feature_length_cmp.png')
     plt.savefig(TARGET_NAME)
+    hl_950, c1 = reduce_dimension(train_hl['X'], 'contribution', 0.95)
+    hl_970, c2 = reduce_dimension(train_hl['X'], 'contribution', 0.97)
+    hl_990, c3 = reduce_dimension(train_hl['X'], 'contribution', 0.99)
+    hl_999, c4 = reduce_dimension(train_hl['X'], 'contribution', 0.999)
+    ax = plt.subplot(1, 1, 1)
+    ax.clear()
+    contri = [c1, c2, c3, c4]
+    contri = ['{:.3f}'.format(num) for num in contri]
+    contri.append('complete')
+    dims = [hl_950.shape[1], hl_970.shape[1], hl_990.shape[1], hl_999.shape[1], train_hl['X'].shape[1]]
+    p2 = plt.bar(contri, dims, width=0.35, label='value')
+    plt.bar_label(p2, label_type='edge')
+    plt.xlabel('contribution')
+    plt.ylabel('length of feature')
+    plt.title("PCA results of 'landmark_and_hog'")
+    TARGET_NAME = os.path.join(VIS_DIMENSION_FOLDER, 'PCA results.png')
+    plt.savefig(TARGET_NAME)
 
 
-# data = load_fer2013()
-vis_dimension()
+if __name__ == '__main__':
+    # data = load_fer2013()
+    vis_dimension()
