@@ -6,6 +6,9 @@ import errno
 import dlib
 import cv2
 import matplotlib
+import copy
+import concurrent.futures
+import pickle
 
 from skimage.feature import hog
 from skimage import exposure
@@ -13,6 +16,8 @@ from matplotlib import pyplot as plt
 from matplotlib import patches
 from data_loader import *
 from dimension_reduction import reduce_dimension
+from parameters import *
+from train import exp_train
 
 # initialization
 image_height = 300
@@ -195,7 +200,7 @@ def vis_landmarks():
             plt.savefig(target_path)
 
 
-def vis_dimension():
+def vis_contribution_vs_feature_length():
     VIS_DIMENSION_FOLDER = os.path.join(VIS_FOLDER_NAME, 'DIMENSION')
     os.makedirs(VIS_DIMENSION_FOLDER, exist_ok=True)
     train_hog = load_data(arg_features='hog')
@@ -217,10 +222,10 @@ def vis_dimension():
     plt.title('Feature Length')
     TARGET_NAME = os.path.join(VIS_DIMENSION_FOLDER, 'feature_length_cmp.png')
     plt.savefig(TARGET_NAME)
-    hl_950, c1 = reduce_dimension(train_hl['X'], 'contribution', 0.95)
-    hl_970, c2 = reduce_dimension(train_hl['X'], 'contribution', 0.97)
-    hl_990, c3 = reduce_dimension(train_hl['X'], 'contribution', 0.99)
-    hl_999, c4 = reduce_dimension(train_hl['X'], 'contribution', 0.999)
+    (hl_950, c1) = reduce_dimension(train_hl['X'], 'contribution', 0.95)
+    (hl_970, c2) = reduce_dimension(train_hl['X'], 'contribution', 0.97)
+    (hl_990, c3) = reduce_dimension(train_hl['X'], 'contribution', 0.99)
+    (hl_999, c4) = reduce_dimension(train_hl['X'], 'contribution', 0.999)
     ax = plt.subplot(1, 1, 1)
     ax.clear()
     contri = [c1, c2, c3, c4]
@@ -236,6 +241,91 @@ def vis_dimension():
     plt.savefig(TARGET_NAME)
 
 
+def vis_reduction_effect(features='landmarks_and_hog'):
+    VIS_REDUCTION_EFFECT_FOLDER = os.path.join(VIS_FOLDER_NAME, 'REDUCTION_EFFECT')
+    os.makedirs(VIS_REDUCTION_EFFECT_FOLDER, exist_ok=True)
+    hconfig = []
+    tconfig = []
+    EXP_HYPER = HYPERPARAMS
+    EXP_HYPER.dim_reduction = True
+    EXP_HYPER.reduction_policy = 'dim_nums'
+    EXP_HYPER.features = features
+    EXP_TRAIN = Training()
+    EXP_TRAIN.save_model = True
+    for i in list(range(100, 2600, 500)) + [-1]:
+        h = copy.deepcopy(EXP_HYPER)
+        h.dim_nums = i
+        hconfig.append(h)
+        t = copy.deepcopy(EXP_TRAIN)
+        t.save_model_path = f"model_{i}_{features}.pkl"
+        tconfig.append(t)
+
+    PRIME_HYPER = copy.deepcopy(EXP_HYPER)
+    PRIME_HYPER.dim_reduction = False
+    PREME_TRAIN = copy.deepcopy(EXP_TRAIN)
+    PREME_TRAIN.save_model_path = f"model_nodr_{features}.pkl"
+    prime_result = exp_train(PRIME_HYPER, PREME_TRAIN)
+    training_time_bm_value = prime_result['training_time']
+    validation_accuracy_bm_value = prime_result['validation_accuracy']
+
+    result = []
+    for i in range(len(hconfig)):
+        d = exp_train(hconfig[i], tconfig[i])
+        result.append(d)
+
+    dump_file = [result, training_time_bm_value, validation_accuracy_bm_value]
+    dump_file_path = os.path.join(VIS_REDUCTION_EFFECT_FOLDER, f'temp_{features}.pkl')
+    with open(dump_file_path, 'wb') as f:
+        pickle.dump(dump_file, f)
+
+    feature_dim, training_time, validation_accuracy, predicting_time = [], [], [], []
+    for d in result:
+        feature_dim.append(d['feature_dim'])
+        training_time.append(d['training_time'])
+        validation_accuracy.append(d['validation_accuracy'] * 100)
+        predicting_time.append(d['predicting_time'])
+
+    training_time_bm = [training_time_bm_value] * len(feature_dim)
+    validation_accuracy_bm = [validation_accuracy_bm_value] * len(feature_dim)
+
+    fig, ax1 = plt.subplots()
+    ax1.plot(feature_dim, training_time, 'bo--', label='t_time')
+    ax1.plot(feature_dim, training_time_bm, 'b-', label='t_time_bm')
+    ax1.set_ylim(min(training_time) - 10, max(training_time) + 10)
+    ax1.set_ylabel("training time(s)")
+    ax2 = ax1.twinx()
+    ax2.plot(feature_dim, validation_accuracy, 'rx--', label='VA')
+    ax2.plot(feature_dim, validation_accuracy_bm, 'r-', label='VA_bm')
+    ax2.set_ylim(0, 100)
+    ax2.set_ylabel('validation accuracy(%)')
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    plt.legend(handles1 + handles2,
+               labels1 + labels2,
+               ncol=2,
+               columnspacing=0.35,
+               loc='upper center',
+               borderpad=0.3,
+               handletextpad=0.1)
+    plt.title(f'PCA effect on {features} feature')
+    TARGET_PATH = os.path.join(VIS_REDUCTION_EFFECT_FOLDER, f'PCA_effect_on_{features}.png')
+    plt.savefig(TARGET_PATH)
+
+
+def simple_test():
+    EXP_HYPER = HYPERPARAMS
+    EXP_HYPER.dim_reduction = True
+    EXP_HYPER.reduction_policy = 'dim_nums'
+    EXP_HYPER.dim_nums = 10
+    EXP_TRAIN = Training()
+    EXP_TRAIN.save_model = False
+    result = exp_train(EXP_HYPER, EXP_TRAIN)
+    for key, value in result.items():
+        print(key, value)
+
+
 if __name__ == '__main__':
     # data = load_fer2013()
-    vis_dimension()
+    vis_reduction_effect('hog')
+    vis_reduction_effect('landmarks_and_hog')
+    vis_reduction_effect('landmarks')

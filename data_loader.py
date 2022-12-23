@@ -3,7 +3,9 @@ import numpy as np
 
 
 def load_data(validation=False, test=False, arg_features=None):
-
+    '''
+        arg_features = 'landmarks_and_hog' or 'hog' or 'landmarks'
+    '''
     data_dict = dict()
     validation_dict = dict()
     test_dict = dict()

@@ -1,5 +1,6 @@
 import numpy as np
-from data_loader import *
+from data_loader import load_data
+from sklearn.decomposition import PCA
 
 
 def reduce_dimension(raw: np.ndarray, reduction_policy='dim_nums', contribution_threshold=0.97, dim_nums=50):
@@ -11,11 +12,12 @@ def reduce_dimension(raw: np.ndarray, reduction_policy='dim_nums', contribution_
     '''
     B, N = raw.shape
     MEAN = raw.mean(axis=0)
-    print(MEAN.shape)
-    centered = raw - MEAN
+    STD = np.std(raw, axis=0)
+    centered = (raw - MEAN) / STD
     cov = np.dot(centered.T, centered)
     w, v = np.linalg.eig(cov)
-    w = np.array([cplx.real for cplx in w])
+    w = w.real
+    v = v.real
     total = w.sum()
     contri = w / total
     accu_contribution = 0
@@ -28,24 +30,26 @@ def reduce_dimension(raw: np.ndarray, reduction_policy='dim_nums', contribution_
                 break
     elif reduction_policy == 'dim_nums':
         target_dim_nums = min(N, dim_nums)
+        if target_dim_nums < 0:
+            target_dim_nums = N
         for i in range(target_dim_nums):
             accu_contribution += contri[i]
     else:
         raise Exception('wrong policy')
-    print(target_dim_nums)
+    print(f"target_dim_nums = {target_dim_nums}")
     ev_map = v[:, :target_dim_nums]
-    print(ev_map.shape)
     res = np.dot(centered, ev_map)
     return res, accu_contribution
 
 
 def test():
     hog_land = load_data(arg_features='landmarks_and_hog')
-    x = hog_land['X']
-    y = hog_land['Y']
-    print(x.shape)
-    x, contri = reduce_dimension(x, reduction_policy='dim_nums', contribution_threshold=0.95, dim_nums=10)
-    print(x.shape, contri)
+    x = hog_land['X'][:10]
+    y = hog_land['Y'][:10]
+    self_made, contri = reduce_dimension(x, reduction_policy='contribution', contribution_threshold=0.95, dim_nums=10)
+    pca = PCA(self_made.shape[1])
+    std = pca.fit_transform(x)
+    print(np.abs(np.abs(std) - np.abs(self_made)) < 1e-6)
 
 
 if __name__ == '__main__':
