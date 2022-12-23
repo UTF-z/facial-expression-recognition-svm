@@ -286,7 +286,7 @@ def vis_reduction_effect(features='landmarks_and_hog'):
         predicting_time.append(d['predicting_time'])
 
     training_time_bm = [training_time_bm_value] * len(feature_dim)
-    validation_accuracy_bm = [validation_accuracy_bm_value] * len(feature_dim)
+    validation_accuracy_bm = [validation_accuracy_bm_value * 100] * len(feature_dim)
 
     fig, ax1 = plt.subplots()
     ax1.plot(feature_dim, training_time, 'bo--', label='t_time')
