@@ -241,7 +241,7 @@ def vis_contribution_vs_feature_length():
     plt.savefig(TARGET_NAME)
 
 
-def vis_reduction_effect(features='landmarks_and_hog'):
+def vis_reduction_effect(features='landmarks_and_hog', feature_length=2500):
     VIS_REDUCTION_EFFECT_FOLDER = os.path.join(VIS_FOLDER_NAME, 'REDUCTION_EFFECT')
     os.makedirs(VIS_REDUCTION_EFFECT_FOLDER, exist_ok=True)
     hconfig = []
@@ -252,7 +252,9 @@ def vis_reduction_effect(features='landmarks_and_hog'):
     EXP_HYPER.features = features
     EXP_TRAIN = Training()
     EXP_TRAIN.save_model = True
-    for i in list(range(100, 2600, 500)) + [-1]:
+    sample_point = np.linspace(1, feature_length, 5)
+    sample_point = sample_point.astype('int32')
+    for i in sample_point:
         h = copy.deepcopy(EXP_HYPER)
         h.dim_nums = i
         hconfig.append(h)
@@ -278,11 +280,12 @@ def vis_reduction_effect(features='landmarks_and_hog'):
     with open(dump_file_path, 'wb') as f:
         pickle.dump(dump_file, f)
 
-    feature_dim, training_time, validation_accuracy, predicting_time = [], [], [], []
+    feature_dim, training_time, validation_accuracy, predicting_time, training_accuracy = [], [], [], [], []
     for d in result:
         feature_dim.append(d['feature_dim'])
         training_time.append(d['training_time'])
         validation_accuracy.append(d['validation_accuracy'] * 100)
+        training_accuracy.append(d['training_accuracy'] * 100)
         predicting_time.append(d['predicting_time'])
 
     training_time_bm = [training_time_bm_value] * len(feature_dim)
@@ -292,12 +295,13 @@ def vis_reduction_effect(features='landmarks_and_hog'):
     ax1.plot(feature_dim, training_time, 'bo--', label='t_time')
     ax1.plot(feature_dim, training_time_bm, 'b-', label='t_time_bm')
     ax1.set_ylim(min(training_time) - 10, max(training_time) + 10)
-    ax1.set_ylabel("training time(s)")
+    ax1.set_ylabel("Training Time(s)")
     ax2 = ax1.twinx()
-    ax2.plot(feature_dim, validation_accuracy, 'rx--', label='VA')
-    ax2.plot(feature_dim, validation_accuracy_bm, 'r-', label='VA_bm')
+    ax2.plot(feature_dim, validation_accuracy, 'rx--', label='Val')
+    ax2.plot(feature_dim, validation_accuracy_bm, 'r-', label='Val_bm')
+    ax2.plot(feature_dim, training_accuracy, 'gx--', label='Tra')
     ax2.set_ylim(0, 100)
-    ax2.set_ylabel('validation accuracy(%)')
+    ax2.set_ylabel('Accuracy(%)')
     handles1, labels1 = ax1.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
     plt.legend(handles1 + handles2,
@@ -307,7 +311,7 @@ def vis_reduction_effect(features='landmarks_and_hog'):
                loc='upper center',
                borderpad=0.3,
                handletextpad=0.1)
-    plt.title(f'PCA effect on {features} feature')
+    plt.title(f'PCA Effect on {features} Feature')
     TARGET_PATH = os.path.join(VIS_REDUCTION_EFFECT_FOLDER, f'PCA_effect_on_{features}.png')
     plt.savefig(TARGET_PATH)
 
@@ -326,6 +330,6 @@ def simple_test():
 
 if __name__ == '__main__':
     # data = load_fer2013()
-    vis_reduction_effect('hog')
-    vis_reduction_effect('landmarks_and_hog')
-    vis_reduction_effect('landmarks')
+    vis_reduction_effect('hog', 2592)
+    vis_reduction_effect('landmarks_and_hog', 2728)
+    vis_reduction_effect('landmarks', 138)

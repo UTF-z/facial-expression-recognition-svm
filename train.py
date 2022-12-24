@@ -1,5 +1,6 @@
 import time
 import argparse
+import numpy as np
 
 from libSVM import LibSVM
 from data_loader import load_data
@@ -16,9 +17,11 @@ def exp_train(hyper, training):
     dim_reduction = hyper.dim_reduction
     data, validation = load_data(validation=True)
     if dim_reduction:
-        data['X'], _ = reduce_dimension(data['X'], hyper.reduction_policy, hyper.contribution_threshold, hyper.dim_nums)
-        validation['X'], _ = reduce_dimension(validation['X'], hyper.reduction_policy, hyper.contribution_threshold,
-                                              hyper.dim_nums)
+        data['X'], _ = reduce_dimension(data['X'],
+                                        hyper.reduction_policy,
+                                        hyper.contribution_threshold,
+                                        hyper.dim_nums,
+                                        val_data=validation)
     feature_dim = data['X'].shape[1]
     model_new = LibSVM(data['X'], data['Y'], c_value, toler, epochs, name=kernel, theta=theta)
     start_time = time.time()
@@ -28,6 +31,7 @@ def exp_train(hyper, training):
     if training.save_model:
         model_new.save(training.save_model_path)
 
+    training_accuracy = model_new.predict(data['X'], data['Y'])
     start_time = time.time()
     validation_accuracy = model_new.predict(validation['X'], validation['Y'])
     predict_time = time.time() - start_time
@@ -36,6 +40,7 @@ def exp_train(hyper, training):
         'feature_dim': feature_dim,
         'training_time': training_time,
         'validation_accuracy': validation_accuracy,
+        'training_accuracy': training_accuracy,
         'predicting_time': predict_time
     }
     return exp_result

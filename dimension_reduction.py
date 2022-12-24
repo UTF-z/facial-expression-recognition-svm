@@ -3,17 +3,21 @@ from data_loader import load_data
 from sklearn.decomposition import PCA
 
 
-def reduce_dimension(raw: np.ndarray, reduction_policy='dim_nums', contribution_threshold=0.97, dim_nums=50):
+def reduce_dimension(train_data: np.ndarray,
+                     reduction_policy='dim_nums',
+                     contribution_threshold=0.97,
+                     dim_nums=50,
+                     val_data=None):
     '''
     self-made PCA.
     reduction_policy can be set among ['dim_nums', 'contribution']
     if you choose 'dim_nums', then 'dim_nums' should be set,
     if you choose 'contribution', then 'contribution_threshold' should be set (0.0~1.0).
     '''
-    B, N = raw.shape
-    MEAN = raw.mean(axis=0)
-    STD = np.std(raw, axis=0)
-    centered = (raw - MEAN) / STD
+    B, N = train_data.shape
+    MEAN = train_data.mean(axis=0)
+    # STD = np.std(train_data, axis=0)
+    centered = train_data - MEAN
     cov = np.dot(centered.T, centered)
     w, v = np.linalg.eig(cov)
     w = w.real
@@ -39,6 +43,9 @@ def reduce_dimension(raw: np.ndarray, reduction_policy='dim_nums', contribution_
     print(f"target_dim_nums = {target_dim_nums}")
     ev_map = v[:, :target_dim_nums]
     res = np.dot(centered, ev_map)
+    if val_data is not None:
+        val_centered = (val_data['X'] - MEAN)
+        val_data['X'] = np.dot(val_centered, ev_map)
     return res, accu_contribution
 
 
